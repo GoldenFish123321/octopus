@@ -29,6 +29,9 @@ func ChannelCreate(channel *model.Channel, ctx context.Context) error {
 	if err := db.GetDB().WithContext(ctx).Create(channel).Error; err != nil {
 		return err
 	}
+	// 清除可能残留的 stats 数据，保证新渠道从零开始
+	StatsChannelDel(channel.ID)
+
 	channelCache.Set(channel.ID, *channel)
 	for _, k := range channel.Keys {
 		if k.ID != 0 {
@@ -309,12 +312,6 @@ func ChannelDel(id int, ctx context.Context) error {
 		return fmt.Errorf("failed to delete channel keys: %w", err)
 	}
 
-	// 删除统计数据
-	if err := tx.Where("channel_id = ?", id).Delete(&model.StatsChannel{}).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to delete channel stats: %w", err)
-	}
-
 	// 删除渠道
 	if err := tx.Delete(&model.Channel{}, id).Error; err != nil {
 		tx.Rollback()
@@ -332,7 +329,11 @@ func ChannelDel(id int, ctx context.Context) error {
 			channelKeyCache.Del(k.ID)
 		}
 	}
-	StatsChannelDel(id)
+
+	// 删除统计数据
+	if err := StatsChannelDel(id); err != nil {
+		return fmt.Errorf("failed to delete channel stats: %w", err)
+	}
 
 	// 刷新受影响的分组缓存
 	for _, groupID := range affectedGroupIDs {

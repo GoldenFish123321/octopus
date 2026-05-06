@@ -292,9 +292,6 @@ func StatsAPIKeyUpdate(apiKeyID int, metrics model.StatsMetrics) error {
 }
 
 func StatsChannelDel(id int) error {
-	if _, ok := statsChannelCache.Get(id); !ok {
-		return nil
-	}
 	statsChannelCache.Del(id)
 	statsChannelCacheNeedUpdateLock.Lock()
 	delete(statsChannelCacheNeedUpdate, id)
@@ -303,9 +300,6 @@ func StatsChannelDel(id int) error {
 }
 
 func StatsAPIKeyDel(id int) error {
-	if _, ok := statsAPIKeyCache.Get(id); !ok {
-		return nil
-	}
 	statsAPIKeyCache.Del(id)
 	statsAPIKeyCacheNeedUpdateLock.Lock()
 	delete(statsAPIKeyCacheNeedUpdate, id)

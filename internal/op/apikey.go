@@ -16,6 +16,9 @@ func APIKeyCreate(key *model.APIKey, ctx context.Context) error {
 	if err := db.GetDB().WithContext(ctx).Create(key).Error; err != nil {
 		return fmt.Errorf("failed to create API key: %w", err)
 	}
+	// 清除可能残留的 stats 数据，保证新 key 从零开始
+	StatsAPIKeyDel(key.ID)
+
 	apiKeyCache.Set(key.ID, *key)
 	apiKeyIDMap.Set(key.APIKey, key.ID)
 	return nil
@@ -63,7 +66,7 @@ func APIKeyDelete(id int, ctx context.Context) error {
 		ID: id,
 	}
 	if err := StatsAPIKeyDel(id); err != nil {
-		return fmt.Errorf("failed to delete stats API key: %v", err)
+		return fmt.Errorf("failed to delete stats API key: %w", err)
 	}
 	result := db.GetDB().WithContext(ctx).Delete(&k)
 	if result.RowsAffected == 0 {
