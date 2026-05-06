@@ -97,14 +97,20 @@ export function Card({ channel, stats, layout = 'grid' }: { channel: Channel; st
                                     <CheckCircle2 className="size-3.5 text-emerald-500" />
                                     {tMetrics('successRequests')}
                                 </dt>
-                                <dd className="text-sm font-semibold">{stats.request_success.formatted.value}</dd>
+                                <dd className="text-sm font-semibold">
+                                    {stats.request_success.formatted.value}
+                                    <span className="ml-1 text-xs text-muted-foreground">{stats.request_success.formatted.unit}</span>
+                                </dd>
                             </div>
                             <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
                                 <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                     <XCircle className="size-3.5 text-destructive" />
                                     {tMetrics('failedRequests')}
                                 </dt>
-                                <dd className="text-sm font-semibold">{stats.request_failed.formatted.value}</dd>
+                                <dd className="text-sm font-semibold">
+                                    {stats.request_failed.formatted.value}
+                                    <span className="ml-1 text-xs text-muted-foreground">{stats.request_failed.formatted.unit}</span>
+                                </dd>
                             </div>
                             <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
                                 <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
