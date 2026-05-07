@@ -3,6 +3,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from "motion/react"
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '@/api/endpoints/user';
 import { LoginForm } from '@/components/modules/login';
 import { APIKeyDashboard } from '@/components/modules/apikey-dashboard';
@@ -22,7 +24,7 @@ function timeout(ms: number) {
 }
 
 export function AppContainer() {
-    const { isAuthenticated, isAPIKeyAuth, isLoading: authLoading } = useAuth();
+    const { isAuthenticated, isAPIKeyAuth, isLoading: authLoading, username, logout } = useAuth();
     const { activeItem, direction } = useNavStore();
     const t = useTranslations('navbar');
     const queryClient = useQueryClient();
@@ -245,8 +247,22 @@ export function AppContainer() {
                             </motion.div>
                         </AnimatePresence>
                     </div>
-                    <div className="ml-auto">
+                    <div className="ml-auto flex items-center gap-2">
                         <Toolbar />
+                        {username && (
+                            <>
+                                <div className="w-px h-6 bg-border mx-1" />
+                                <span className="text-sm text-muted-foreground truncate max-w-24">{username}</span>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={logout}
+                                    className="rounded-xl hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                    <LogOut className="size-4" />
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </header>
                 <AnimatePresence mode="wait" initial={false}>

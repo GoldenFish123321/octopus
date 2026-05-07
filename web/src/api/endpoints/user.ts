@@ -46,9 +46,10 @@ interface AuthState {
     isAPIKeyAuth: boolean;
     token: string | null;
     expireAt: string | null;
+    username: string | null;
 
     // Actions
-    setAuth: (token: string, expireAt: string) => void;
+    setAuth: (token: string, expireAt: string, username?: string) => void;
     setAPIKeyAuth: (apiKey: string) => void;
     checkAuth: () => Promise<void>;
     logout: () => void;
@@ -65,13 +66,15 @@ export const useAuthStore = create<AuthState>()(
             isAPIKeyAuth: false,
             token: null,
             expireAt: null,
+            username: null,
 
-            setAuth: (token: string, expireAt: string) => {
+            setAuth: (token: string, expireAt: string, username?: string) => {
                 set({
                     isAuthenticated: true,
                     isAPIKeyAuth: false,
                     token,
                     expireAt,
+                    username: username ?? null,
                     isLoading: false
                 });
             },
@@ -119,6 +122,7 @@ export const useAuthStore = create<AuthState>()(
                     isAPIKeyAuth: false,
                     token: null,
                     expireAt: null,
+                    username: null,
                     isLoading: false
                 });
             }
@@ -129,6 +133,7 @@ export const useAuthStore = create<AuthState>()(
                 token: state.token,
                 expireAt: state.expireAt,
                 isAPIKeyAuth: state.isAPIKeyAuth,
+                username: state.username,
             })
         }
     )
@@ -162,9 +167,9 @@ export function useLogin() {
         mutationFn: async (data: UserLoginRequest) => {
             return apiClient.post<UserLoginResponse>('/api/v1/user/login', data);
         },
-        onSuccess: (data) => {
+        onSuccess: (data, variables) => {
             // 保存到 zustand store
-            setAuth(data.token, data.expire_at);
+            setAuth(data.token, data.expire_at, variables.username);
         },
         onError: (error) => {
             logger.error('登录失败:', error);
@@ -249,6 +254,7 @@ export function useAuth() {
         isAuthenticated: store.isAuthenticated,
         isAPIKeyAuth: store.isAPIKeyAuth,
         isLoading: store.isLoading,
+        username: store.username,
         logout: store.logout,
     };
 }
