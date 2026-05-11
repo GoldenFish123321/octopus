@@ -197,12 +197,6 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 
 				span.End(model.AttemptSuccess, statusCode, "")
 
-				// Channel 维度统计
-				op.StatsChannelUpdate(channel.ID, model.StatsMetrics{
-					WaitTime:       span.Duration().Milliseconds(),
-					RequestSuccess: 1,
-				})
-
 				// 熔断器：记录成功
 				balancer.RecordSuccess(channel.ID, usedKey.ID, item.ModelName)
 				// 会话保持：更新粘性记录
@@ -215,12 +209,6 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 			// ====== 失败 ======
 			op.ChannelKeyUpdate(usedKey)
 			span.End(model.AttemptFailed, statusCode, fwdErr.Error())
-
-			// Channel 维度统计
-			op.StatsChannelUpdate(channel.ID, model.StatsMetrics{
-				WaitTime:      span.Duration().Milliseconds(),
-				RequestFailed: 1,
-			})
 
 			// 熔断器：记录失败
 			balancer.RecordFailure(channel.ID, usedKey.ID, item.ModelName)

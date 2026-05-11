@@ -188,12 +188,6 @@ func (ra *relayAttempt) attempt() attemptResult {
 
 		span.End(dbmodel.AttemptSuccess, statusCode, "")
 
-		// Channel 维度统计
-		op.StatsChannelUpdate(ra.channel.ID, dbmodel.StatsMetrics{
-			WaitTime:       span.Duration().Milliseconds(),
-			RequestSuccess: 1,
-		})
-
 		// 熔断器：记录成功
 		balancer.RecordSuccess(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
 		// 会话保持：更新粘性记录
@@ -205,12 +199,6 @@ func (ra *relayAttempt) attempt() attemptResult {
 	// ====== 失败 ======
 	op.ChannelKeyUpdate(ra.usedKey)
 	span.End(dbmodel.AttemptFailed, statusCode, fwdErr.Error())
-
-	// Channel 维度统计
-	op.StatsChannelUpdate(ra.channel.ID, dbmodel.StatsMetrics{
-		WaitTime:      span.Duration().Milliseconds(),
-		RequestFailed: 1,
-	})
 
 	// 熔断器：记录失败
 	balancer.RecordFailure(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
