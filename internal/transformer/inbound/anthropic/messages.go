@@ -771,7 +771,7 @@ func (i *MessagesInbound) TransformStream(ctx context.Context, stream *model.Int
 		}
 
 		// Handle finish reason
-		if choice.FinishReason != nil && !i.hasFinished {
+		if choice.FinishReason != nil && *choice.FinishReason != "" && !i.hasFinished {
 			i.hasFinished = true
 
 			stopEvent := StreamEvent{

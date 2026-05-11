@@ -159,7 +159,7 @@ func (i *ResponseInbound) TransformStream(ctx context.Context, stream *model.Int
 		}
 
 		// Handle finish reason
-		if choice.FinishReason != nil && !i.hasFinished {
+		if choice.FinishReason != nil && *choice.FinishReason != "" && !i.hasFinished {
 			i.hasFinished = true
 
 			// Close any open content parts and output items
