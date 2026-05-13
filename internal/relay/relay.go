@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -70,6 +71,7 @@ func Handler(inboundType inbound.InboundType, c *gin.Context) {
 	}
 
 	var lastErr error
+	originalReqBytes, _ := json.Marshal(internalRequest)
 
 	for iter.Next() {
 		select {
@@ -80,6 +82,8 @@ func Handler(inboundType inbound.InboundType, c *gin.Context) {
 		default:
 		}
 
+		// 深拷贝恢复原始请求，避免上一次 channel 的 param_override 残留
+		_ = json.Unmarshal(originalReqBytes, internalRequest)
 		item := iter.Item()
 
 		// 获取通道
@@ -125,6 +129,11 @@ func Handler(inboundType inbound.InboundType, c *gin.Context) {
 
 		// 设置实际模型
 		internalRequest.Model = item.ModelName
+
+		// 应用参数覆盖
+		if err := ApplyParamOverride(channel, internalRequest); err != nil {
+			log.Warnf("failed to apply param_override for channel %s: %v", channel.Name, err)
+		}
 
 		allCircuitBroken := true
 		for _, usedKey := range keys {

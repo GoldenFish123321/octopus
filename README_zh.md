@@ -251,6 +251,65 @@ http://localhost:3000
 
 ---
 
+### 🔧 参数覆盖
+
+每个渠道都有一个 **参数覆盖** 字段，用于在请求转发到上游供应商之前修改请求参数。适用于按渠道调整 `temperature`、`max_tokens` 或 `model` 等参数。
+
+在渠道编辑表单中，填写 **Param Override** 字段为 JSON 字符串。支持两种模式：
+
+**简单模式** — 直接覆盖键值：
+
+```json
+{
+  "temperature": 0.7,
+  "max_tokens": 4096
+}
+```
+
+这会将该渠道所有请求的 `temperature` 设为 `0.7`，`max_tokens` 设为 `4096`。
+
+**Operations 模式** — 条件覆盖：
+
+```json
+{
+  "operations": [
+    {
+      "path": "temperature",
+      "mode": "set",
+      "value": 0,
+      "conditions": [
+        { "path": "model", "mode": "prefix", "value": "o1" }
+      ]
+    }
+  ]
+}
+```
+
+仅当目标模型名称以 `"o1"` 开头时，才将 `temperature` 设为 `0`。
+
+**Operation 字段说明：**
+
+| 字段 | 说明 |
+|------|------|
+| `path` | 要修改的请求参数（JSON 字段名，如 `temperature`、`max_tokens`、`model`） |
+| `mode` | 操作类型，目前仅支持 `"set"` |
+| `value` | 要设置的值 |
+| `conditions` | 可选的条件列表，需全部满足 |
+| `logic` | `"AND"` 或 `"OR"`（默认 `"OR"`），多个条件的组合方式 |
+
+**Condition 字段说明：**
+
+| 字段 | 说明 |
+|------|------|
+| `path` | 要检查的字段。使用 `model` 匹配渠道映射后的目标模型名，或使用其他请求参数 |
+| `mode` | 匹配方式：`"prefix"`（前缀匹配）或 `"contains"`（包含匹配） |
+| `value` | 要匹配的字符串 |
+| `invert` | `true` 表示取反条件 |
+
+> 💡 **注意**：条件中的 `model` 指的是渠道映射后的模型名称，不是请求中的分组模型名。
+
+---
+
 ### 📁 分组管理
 
 分组用于将多个渠道聚合为一个统一的对外模型名称。

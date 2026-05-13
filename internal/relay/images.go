@@ -123,6 +123,7 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 	metrics.RequestContent = buildImagesRequestContentForLog(isMultipart, bc, jsonPayload)
 
 	var lastErr error
+	originalPayloadBytes, _ := json.Marshal(jsonPayload)
 
 	for iter.Next() {
 		select {
@@ -132,6 +133,12 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 			return
 		default:
 		}
+
+		// 深拷贝恢复原始 payload，避免上一次 channel 的 param_override 残留
+		for k := range jsonPayload {
+			delete(jsonPayload, k)
+		}
+		_ = json.Unmarshal(originalPayloadBytes, &jsonPayload)
 
 		item := iter.Item()
 
@@ -551,6 +558,9 @@ func imagesAttempt(
 			return 0, false, nil, "", errors.New("nil json payload")
 		}
 		jsonPayload["model"] = actualModel
+		if err := ApplyParamOverrideMap(channel, jsonPayload); err != nil {
+			log.Warnf("failed to apply param_override for channel %s: %v", channel.Name, err)
+		}
 		b, err := json.Marshal(jsonPayload)
 		if err != nil {
 			return 0, false, nil, "", fmt.Errorf("failed to marshal json: %w", err)

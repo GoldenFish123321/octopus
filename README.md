@@ -250,6 +250,65 @@ The program automatically appends API paths based on channel type. You only need
 
 ---
 
+### 🔧 Parameter Override
+
+Each channel has a **Param Override** field that modifies request parameters before forwarding to the upstream provider. This is useful for adjusting parameters like `temperature`, `max_tokens`, or `model` on a per-channel basis.
+
+In the channel edit form, fill in the **Param Override** field with a JSON string. Two modes are supported:
+
+**Simple Mode** — direct key-value overrides:
+
+```json
+{
+  "temperature": 0.7,
+  "max_tokens": 4096
+}
+```
+
+This sets `temperature` to `0.7` and `max_tokens` to `4096` for all requests through this channel.
+
+**Operations Mode** — conditional overrides:
+
+```json
+{
+  "operations": [
+    {
+      "path": "temperature",
+      "mode": "set",
+      "value": 0,
+      "conditions": [
+        { "path": "model", "mode": "prefix", "value": "o1" }
+      ]
+    }
+  ]
+}
+```
+
+This sets `temperature` to `0` only when the target model name starts with `"o1"`.
+
+**Operation Fields:**
+
+| Field | Description |
+|-------|-------------|
+| `path` | Request parameter to modify (JSON field name, e.g. `temperature`, `max_tokens`, `model`) |
+| `mode` | Operation type, currently only `"set"` |
+| `value` | Value to set |
+| `conditions` | Optional list of conditions that must be met |
+| `logic` | `"AND"` or `"OR"` (default `"OR"`), how multiple conditions are combined |
+
+**Condition Fields:**
+
+| Field | Description |
+|-------|-------------|
+| `path` | Field to check. Use `model` to match the target model name (after channel mapping), or any other request parameter |
+| `mode` | Match type: `"prefix"` or `"contains"` |
+| `value` | String to match against |
+| `invert` | `true` to negate the condition |
+
+> 💡 **Note**: The `model` in conditions refers to the channel's mapped model name, not the original group model name from the request.
+
+---
+
 ### 📁 Group Management
 
 Groups aggregate multiple channels into a unified external model name.
