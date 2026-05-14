@@ -598,6 +598,19 @@ func convertAssistantMessageToResponses(msg model.Message) []ResponsesItem {
 		})
 	}
 
+	// Handle reasoning content
+	if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+		items = append(items, ResponsesItem{
+			Type: "reasoning",
+			Summary: []ResponsesReasoningSummary{
+				{
+					Type: "summary_text",
+					Text: *msg.ReasoningContent,
+				},
+			},
+		})
+	}
+
 	// Handle content
 	var contentItems []ResponsesItem
 	if msg.Content.Content != nil {
