@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/bestruirui/octopus/internal/transformer/model"
+	"github.com/bestruirui/octopus/internal/utils/log"
 )
 
 type ChatInbound struct {
@@ -35,8 +36,12 @@ func (i *ChatInbound) TransformResponse(ctx context.Context, response *model.Int
 
 func (i *ChatInbound) TransformStream(ctx context.Context, stream *model.InternalLLMResponse) ([]byte, error) {
 	if stream.Object == "[DONE]" {
+		log.Debugf("[stream-inbound-openai-chat] received: [DONE]")
 		return []byte("data: [DONE]\n\n"), nil
 	}
+
+	streamJSON, _ := json.Marshal(stream)
+	log.Debugf("[stream-inbound-openai-chat] input: %s", string(streamJSON))
 
 	// Store the chunk for aggregation
 	i.streamChunks = append(i.streamChunks, stream)
@@ -63,6 +68,9 @@ func (i *ChatInbound) TransformStream(ctx context.Context, stream *model.Interna
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debugf("[stream-inbound-openai-chat] output: %s", string(body))
+
 	return []byte("data: " + string(body) + "\n\n"), nil
 }
 

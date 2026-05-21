@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bestruirui/octopus/internal/transformer/model"
+	"github.com/bestruirui/octopus/internal/utils/log"
 )
 
 type ChatOutbound struct{}
@@ -75,6 +76,8 @@ func (o *ChatOutbound) TransformResponse(ctx context.Context, response *http.Res
 }
 
 func (o *ChatOutbound) TransformStream(ctx context.Context, eventData []byte) (*model.InternalLLMResponse, error) {
+	log.Debugf("[stream-outbound-openai-chat] raw: %s", string(eventData))
+
 	if bytes.HasPrefix(eventData, []byte("[DONE]")) {
 		return &model.InternalLLMResponse{
 			Object: "[DONE]",
@@ -94,5 +97,9 @@ func (o *ChatOutbound) TransformStream(ctx context.Context, eventData []byte) (*
 	if err := json.Unmarshal(eventData, &resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal stream chunk: %w", err)
 	}
+
+	respJSON, _ := json.Marshal(resp)
+	log.Debugf("[stream-outbound-openai-chat] parsed: %s", string(respJSON))
+
 	return &resp, nil
 }

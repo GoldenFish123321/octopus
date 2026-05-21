@@ -461,8 +461,12 @@ func (i *MessagesInbound) TransformResponse(ctx context.Context, response *model
 func (i *MessagesInbound) TransformStream(ctx context.Context, stream *model.InternalLLMResponse) ([]byte, error) {
 	// Handle [DONE] marker
 	if stream.Object == "[DONE]" {
+		log.Debugf("[stream-inbound-anthropic] received: [DONE]")
 		return nil, nil
 	}
+
+	streamJSON, _ := json.Marshal(stream)
+	log.Debugf("[stream-inbound-anthropic] input: %s", string(streamJSON))
 
 	// Store the chunk for aggregation
 	i.streamChunks = append(i.streamChunks, stream)
@@ -804,7 +808,7 @@ func (i *MessagesInbound) TransformStream(ctx context.Context, stream *model.Int
 	}
 
 	// Handle usage chunk after finish_reason
-	if stream.Usage != nil && i.hasFinished && !i.messageStopped {
+	if stream.Usage != nil && (stream.Usage.PromptTokens > 0 || stream.Usage.CompletionTokens > 0) && i.hasFinished && !i.messageStopped {
 		msgDeltaEvent := StreamEvent{
 			Type: "message_delta",
 		}
@@ -848,6 +852,8 @@ func (i *MessagesInbound) TransformStream(ctx context.Context, stream *model.Int
 		}
 		result = append(result, event...)
 	}
+
+	log.Debugf("[stream-inbound-anthropic] output: %s", string(result))
 
 	return result, nil
 }
