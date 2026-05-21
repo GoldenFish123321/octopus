@@ -5,11 +5,21 @@ export type ToolbarLayout = 'grid' | 'list';
 export type ToolbarSortOrder = 'asc' | 'desc';
 export type ToolbarSortField = 'name' | 'created';
 export type ToolbarCreatedSortablePage = 'channel' | 'group';
-export const TOOLBAR_PAGES = ['channel', 'group', 'model'] as const;
+export const TOOLBAR_PAGES = ['channel', 'group', 'model', 'log'] as const;
 export type ToolbarPage = (typeof TOOLBAR_PAGES)[number];
 export type ChannelFilter = 'all' | 'enabled' | 'disabled';
 export type GroupFilter = 'all' | 'with-members' | 'empty';
 export type ModelFilter = 'all' | 'priced' | 'free';
+
+export type LogFilterOption = { value: string; label: string };
+export interface LogFilters {
+    search: string;
+    group: string;
+    channel: string;
+    apikey: string;
+    startTime: string;
+    endTime: string;
+}
 
 interface ToolbarViewOptionsState {
     layouts: Partial<Record<ToolbarPage, ToolbarLayout>>;
@@ -35,6 +45,15 @@ interface ToolbarViewOptionsState {
     setChannelFilter: (value: ChannelFilter) => void;
     setGroupFilter: (value: GroupFilter) => void;
     setModelFilter: (value: ModelFilter) => void;
+
+    logFilters: LogFilters;
+    logFilterOptions: {
+        groups: LogFilterOption[];
+        channels: LogFilterOption[];
+        apikeys: LogFilterOption[];
+    };
+    setLogFilter: (key: keyof LogFilters, value: string) => void;
+    setLogFilterOptions: (options: Partial<{ groups: LogFilterOption[]; channels: LogFilterOption[]; apikeys: LogFilterOption[] }>) => void;
 }
 
 export const useToolbarViewOptionsStore = create<ToolbarViewOptionsState>()(
@@ -68,6 +87,13 @@ export const useToolbarViewOptionsStore = create<ToolbarViewOptionsState>()(
             setChannelFilter: (value) => set({ channelFilter: value }),
             setGroupFilter: (value) => set({ groupFilter: value }),
             setModelFilter: (value) => set({ modelFilter: value }),
+
+            logFilters: { search: '', group: '', channel: '', apikey: '', startTime: '', endTime: '' },
+            logFilterOptions: { groups: [], channels: [], apikeys: [] },
+            setLogFilter: (key, value) =>
+                set((state) => ({ logFilters: { ...state.logFilters, [key]: value } })),
+            setLogFilterOptions: (options) =>
+                set((state) => ({ logFilterOptions: { ...state.logFilterOptions, ...options } })),
         }),
         {
             name: 'toolbar-view-options-storage',
@@ -78,6 +104,7 @@ export const useToolbarViewOptionsStore = create<ToolbarViewOptionsState>()(
                 channelFilter: state.channelFilter,
                 groupFilter: state.groupFilter,
                 modelFilter: state.modelFilter,
+                logFilters: state.logFilters,
             }),
         }
     )

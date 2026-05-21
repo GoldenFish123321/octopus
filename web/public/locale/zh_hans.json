@@ -81,6 +81,18 @@
                     "all": "全部模型",
                     "priced": "仅收费",
                     "free": "仅免费"
+                },
+                "log": {
+                    "allGroups": "全部分组",
+                    "allChannels": "全部渠道",
+                    "allApikeys": "全部密钥",
+                    "group": "分组",
+                    "channel": "渠道",
+                    "apikey": "密钥",
+                    "timeRange": "时间范围",
+                    "timeRangePlaceholder": "选择日期",
+                    "searchPlaceholder": "输入关键字筛选",
+                    "noResult": "无匹配项"
                 }
             }
         }
@@ -446,6 +458,20 @@
             "attempts": "次尝试",
             "success": "成功",
             "failed": "失败"
+        },
+        "filter": {
+            "group": "分组",
+            "model": "模型",
+            "retried": "重试",
+            "channel": "渠道",
+            "allGroups": "全部分组",
+            "allModels": "全部模型",
+            "allRetries": "全部重试状态",
+            "retriedYes": "重试过",
+            "retriedNo": "未重试",
+            "allChannels": "全部渠道",
+            "searchPlaceholder": "输入关键字筛选",
+            "noResult": "无匹配项"
         }
     },
     "channel": {

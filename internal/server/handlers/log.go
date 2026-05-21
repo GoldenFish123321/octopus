@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/bestruirui/octopus/internal/model"
 	"github.com/bestruirui/octopus/internal/op"
 	"github.com/bestruirui/octopus/internal/server/middleware"
 	"github.com/bestruirui/octopus/internal/server/resp"
@@ -19,6 +21,10 @@ func init() {
 		AddRoute(
 			router.NewRoute("/list", http.MethodGet).
 				Handle(listLog),
+		).
+		AddRoute(
+			router.NewRoute("/detail", http.MethodGet).
+				Handle(getLogDetail),
 		).
 		AddRoute(
 			router.NewRoute("/clear", http.MethodDelete).
@@ -39,8 +45,6 @@ func init() {
 func listLog(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	startTimeStr := c.Query("start_time")
-	endTimeStr := c.Query("end_time")
 
 	if page < 1 {
 		page = 1
@@ -49,29 +53,36 @@ func listLog(c *gin.Context) {
 		pageSize = 20
 	}
 
-	var startTime, endTime *int
-	if startTimeStr != "" && endTimeStr != "" {
-		st, err := strconv.Atoi(startTimeStr)
-		if err != nil {
-			resp.Error(c, http.StatusBadRequest, err.Error())
-			return
-		}
-		et, err := strconv.Atoi(endTimeStr)
-		if err != nil {
-			resp.Error(c, http.StatusBadRequest, err.Error())
-			return
-		}
-		startTime = &st
-		endTime = &et
+	filter, err := parseRelayLogFilter(c)
+	if err != nil {
+		resp.Error(c, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	logs, err := op.RelayLogList(c.Request.Context(), startTime, endTime, page, pageSize)
+	logs, err := op.RelayLogList(c.Request.Context(), page, pageSize, filter)
 	if err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	op.RelayLogStripContent(logs)
 	resp.Success(c, logs)
+}
+
+func getLogDetail(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Query("id"), 10, 64)
+	if err != nil {
+		resp.Error(c, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	log, err := op.RelayLogDetail(c.Request.Context(), id)
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	resp.Success(c, log)
 }
 
 func clearLog(c *gin.Context) {
@@ -89,6 +100,62 @@ func getStreamToken(c *gin.Context) {
 		return
 	}
 	resp.Success(c, gin.H{"token": token})
+}
+
+func parseRelayLogFilter(c *gin.Context) (*model.RelayLogListFilter, error) {
+	group := strings.TrimSpace(c.Query("group"))
+	modelName := strings.TrimSpace(c.Query("model"))
+	channel := strings.TrimSpace(c.Query("channel"))
+	retriedStr := strings.TrimSpace(c.Query("retried"))
+	apiKey := strings.TrimSpace(c.Query("apikey"))
+	search := strings.TrimSpace(c.Query("search"))
+	startTimeStr := strings.TrimSpace(c.Query("start_time"))
+	endTimeStr := strings.TrimSpace(c.Query("end_time"))
+
+	if group == "" && modelName == "" && channel == "" && retriedStr == "" &&
+		apiKey == "" && search == "" && startTimeStr == "" && endTimeStr == "" {
+		return nil, nil
+	}
+
+	filter := &model.RelayLogListFilter{}
+	if group != "" {
+		filter.Group = &group
+	}
+	if modelName != "" {
+		filter.Model = &modelName
+	}
+	if channel != "" {
+		filter.Channel = &channel
+	}
+	if retriedStr != "" {
+		retried, err := strconv.ParseBool(retriedStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid retried value")
+		}
+		filter.Retried = &retried
+	}
+	if apiKey != "" {
+		filter.APIKey = &apiKey
+	}
+	if search != "" {
+		filter.Search = &search
+	}
+	if startTimeStr != "" {
+		st, err := strconv.Atoi(startTimeStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid start_time value")
+		}
+		filter.StartTime = &st
+	}
+	if endTimeStr != "" {
+		et, err := strconv.Atoi(endTimeStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid end_time value")
+		}
+		filter.EndTime = &et
+	}
+
+	return filter, nil
 }
 
 func streamLog(c *gin.Context) {

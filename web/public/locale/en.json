@@ -81,6 +81,18 @@
                     "all": "All models",
                     "priced": "Priced only",
                     "free": "Free only"
+                },
+                "log": {
+                    "allGroups": "All Groups",
+                    "allChannels": "All Channels",
+                    "allApikeys": "All API Keys",
+                    "group": "Group",
+                    "channel": "Channel",
+                    "apikey": "API Key",
+                    "timeRange": "Time Range",
+                    "timeRangePlaceholder": "Select dates",
+                    "searchPlaceholder": "Type to filter",
+                    "noResult": "No matches"
                 }
             }
         }
@@ -446,6 +458,20 @@
             "attempts": "attempts",
             "success": "Success",
             "failed": "Failed"
+        },
+        "filter": {
+            "group": "Group",
+            "model": "Model",
+            "retried": "Retried",
+            "channel": "Channel",
+            "allGroups": "All Groups",
+            "allModels": "All Models",
+            "allRetries": "All Retry States",
+            "retriedYes": "Retried",
+            "retriedNo": "Not Retried",
+            "allChannels": "All Channels",
+            "searchPlaceholder": "Type to filter",
+            "noResult": "No matches"
         }
     },
     "channel": {

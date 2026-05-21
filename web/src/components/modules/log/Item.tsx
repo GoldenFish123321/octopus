@@ -8,7 +8,7 @@ import JsonView from '@uiw/react-json-view';
 import { githubDarkTheme } from '@uiw/react-json-view/githubDark';
 import { githubLightTheme } from '@uiw/react-json-view/githubLight';
 import { useTheme } from 'next-themes';
-import { type RelayLog, type ChannelAttempt } from '@/api/endpoints/log';
+import { type RelayLog, type ChannelAttempt, useLogDetail } from '@/api/endpoints/log';
 import { getModelIcon } from '@/lib/model-icons';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -195,16 +195,28 @@ export function LogCard({ log }: { log: RelayLog }) {
     const hasError = !!log.error;
     const hasMultipleAttempts = log.attempts && log.attempts.length > 1;
     const [isDiagnosticExpanded, setIsDiagnosticExpanded] = useState(false);
+    const [detailId, setDetailId] = useState<number | null>(null);
+    const { data: detail } = useLogDetail(detailId);
+
+    const requestContent = detail?.request_content ?? log.request_content;
+    const responseContent = detail?.response_content ?? log.response_content;
+
+    const handleOpenDialog = () => {
+        if (detailId === null) {
+            setDetailId(log.id);
+        }
+    };
 
     return (
         <TooltipProvider>
             <MorphingDialog>
-                <MorphingDialogTrigger
-                    className={cn(
-                        "rounded-3xl border bg-card w-full text-left",
-                        hasError ? "border-destructive/40" : "border-border",
-                    )}
-                >
+                <div onClick={handleOpenDialog}>
+                    <MorphingDialogTrigger
+                        className={cn(
+                            "rounded-3xl border bg-card w-full text-left",
+                            hasError ? "border-destructive/40" : "border-border",
+                        )}
+                    >
                     <div className={cn("p-4 grid grid-cols-[auto_1fr] gap-4", hasError ? "items-start" : "items-center")}>
                         <ModelAvatar size={40} />
                         <div className="min-w-0 flex flex-col gap-3">
@@ -279,6 +291,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                         </div>
                     </div>
                 </MorphingDialogTrigger>
+                </div>
 
                 <MorphingDialogContainer>
                     <MorphingDialogContent className="relative w-[calc(100vw-2rem)] md:w-[80vw] bg-card text-card-foreground px-6 py-4 rounded-3xl h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
@@ -432,7 +445,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                 </Badge>
                                             </div>
                                             <div className="flex-1 overflow-auto min-h-0">
-                                                <DeferredJsonContent content={log.request_content} fallbackText={t('noRequestContent')} />
+                                                <DeferredJsonContent content={requestContent} fallbackText={t('noRequestContent')} />
                                             </div>
                                         </div>
                                         <div className="flex flex-col rounded-2xl border border-border bg-muted/30 overflow-hidden min-h-0">
@@ -444,7 +457,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                                 </Badge>
                                             </div>
                                             <div className="flex-1 overflow-auto min-h-0">
-                                                <DeferredJsonContent content={log.response_content} fallbackText={t('noResponseContent')} />
+                                                <DeferredJsonContent content={responseContent} fallbackText={t('noResponseContent')} />
                                             </div>
                                         </div>
                                     </div>

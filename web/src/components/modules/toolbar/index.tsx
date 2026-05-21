@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowUpAZ, Clock3, LayoutGrid, List, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowUpAZ, Check, CalendarIcon, ChevronDown, Clock3, LayoutGrid, List, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     MorphingDialog,
@@ -10,7 +10,9 @@ import {
     MorphingDialogContent,
 } from '@/components/ui/morphing-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 import { buttonVariants } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useNavStore, type NavItem } from '@/components/modules/navbar';
 import { CreateDialogContent as ChannelCreateContent } from '@/components/modules/channel/Create';
@@ -25,6 +27,7 @@ import {
     type ChannelFilter,
     type GroupFilter,
     type ModelFilter,
+    type LogFilterOption,
     type ToolbarSortField,
     type ToolbarSortOrder,
 } from './view-options-store';
@@ -38,6 +41,10 @@ type CombinedSortOption = {
     order: ToolbarSortOrder;
     labelKey: string;
 };
+function formatDate(date: Date): string {
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 const COMBINED_SORT_OPTIONS: readonly CombinedSortOption[] = [
     { value: 'name-asc', field: 'name', order: 'asc', labelKey: 'popover.nameAsc' },
     { value: 'name-desc', field: 'name', order: 'desc', labelKey: 'popover.nameDesc' },
@@ -60,6 +67,109 @@ function CreateDialogContent({ activeItem }: { activeItem: ToolbarPage }) {
     }
 }
 
+function SearchableFilterSelect({
+    value,
+    onValueChange,
+    options,
+    allLabel,
+    placeholder,
+    searchPlaceholder,
+    emptyText,
+}: {
+    value: string;
+    onValueChange: (value: string) => void;
+    options: LogFilterOption[];
+    allLabel: string;
+    placeholder: string;
+    searchPlaceholder: string;
+    emptyText: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const [keyword, setKeyword] = useState('');
+
+    const filteredOptions = useMemo(() => {
+        const term = keyword.trim().toLowerCase();
+        if (!term) return options;
+        return options.filter((option) => option.label.toLowerCase().includes(term));
+    }, [keyword, options]);
+
+    const selectedLabel = useMemo(() => {
+        if (!value) return allLabel;
+        return options.find((option) => option.value === value)?.label ?? value;
+    }, [allLabel, options, value]);
+
+    return (
+        <Popover
+            open={open}
+            onOpenChange={(nextOpen) => {
+                setOpen(nextOpen);
+                if (!nextOpen) {
+                    setKeyword('');
+                }
+            }}
+        >
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    className={cn(
+                        'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors flex items-center gap-1',
+                        !value
+                            ? 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                            : 'border-primary/30 bg-primary text-primary-foreground'
+                    )}
+                >
+                    <span className="truncate flex-1">{selectedLabel || placeholder}</span>
+                    <ChevronDown className="size-3 shrink-0" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-2">
+                <Input
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    placeholder={searchPlaceholder}
+                    className="h-8"
+                />
+                <div className="mt-2 max-h-56 overflow-auto space-y-1">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onValueChange('');
+                            setOpen(false);
+                        }}
+                        className={cn(
+                            'flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent',
+                            !value && 'bg-accent'
+                        )}
+                    >
+                        <span className="truncate">{allLabel}</span>
+                        {!value && <Check className="size-4 text-primary" />}
+                    </button>
+                    {filteredOptions.map((option) => (
+                        <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                                onValueChange(option.value);
+                                setOpen(false);
+                            }}
+                            className={cn(
+                                'flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent',
+                                value === option.value && 'bg-accent'
+                            )}
+                        >
+                            <span className="truncate">{option.label}</span>
+                            {value === option.value && <Check className="size-4 text-primary" />}
+                        </button>
+                    ))}
+                    {filteredOptions.length === 0 && (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">{emptyText}</div>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export function Toolbar() {
     const t = useTranslations('toolbar');
     const { activeItem } = useNavStore();
@@ -80,11 +190,15 @@ export function Toolbar() {
     const setChannelFilter = useToolbarViewOptionsStore((s) => s.setChannelFilter);
     const setGroupFilter = useToolbarViewOptionsStore((s) => s.setGroupFilter);
     const setModelFilter = useToolbarViewOptionsStore((s) => s.setModelFilter);
+    const logFilters = useToolbarViewOptionsStore((s) => s.logFilters);
+    const logFilterOptions = useToolbarViewOptionsStore((s) => s.logFilterOptions);
+    const setLogFilter = useToolbarViewOptionsStore((s) => s.setLogFilter);
     const [expandedSearchItem, setExpandedSearchItem] = useState<ToolbarPage | null>(null);
     const searchExpanded = expandedSearchItem === toolbarItem;
 
     if (!toolbarItem) return null;
-    const showLayoutOptions = toolbarItem !== 'group';
+    const isLogPage = toolbarItem === 'log';
+    const showLayoutOptions = !isLogPage && toolbarItem !== 'group';
     const showCombinedSortOptions = toolbarItem === 'channel' || toolbarItem === 'group';
 
     const channelFilterLabelKeys: Record<ChannelFilter, string> = {
@@ -97,7 +211,7 @@ export function Toolbar() {
         'with-members': 'popover.filter.group.withMembers',
         empty: 'popover.filter.group.empty',
     };
-    const modelFilterLabelKeys: Record<ModelFilter, string> = {
+    const modelFilterLabelMap: Record<ModelFilter, string> = {
         all: 'popover.filter.model.all',
         priced: 'popover.filter.model.priced',
         free: 'popover.filter.model.free',
@@ -113,16 +227,20 @@ export function Toolbar() {
                 value,
                 label: t(groupFilterLabelKeys[value]),
             }))
-            : MODEL_FILTER_OPTIONS.map((value) => ({
-                value,
-                label: t(modelFilterLabelKeys[value]),
-            }));
+            : toolbarItem === 'model'
+                ? MODEL_FILTER_OPTIONS.map((value) => ({
+                    value,
+                    label: t(modelFilterLabelMap[value]),
+                }))
+                : [];
 
     const activeFilter = toolbarItem === 'channel'
         ? channelFilter
         : toolbarItem === 'group'
             ? groupFilter
-            : modelFilter;
+            : toolbarItem === 'model'
+                ? modelFilter
+                : '';
 
     const handleFilterChange = (value: string) => {
         switch (toolbarItem) {
@@ -206,133 +324,215 @@ export function Toolbar() {
                         className="w-64 rounded-2xl border border-border/60 bg-card p-3 shadow-xl"
                     >
                         <div className="grid gap-3">
-                            {showLayoutOptions && (
-                                <div className="grid gap-2">
-                                    <p className="text-xs font-medium text-muted-foreground">{t('popover.layout')}</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setLayout(toolbarItem, 'grid')}
-                                            className={cn(
-                                                'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
-                                                layout === 'grid'
-                                                    ? 'border-primary/30 bg-primary text-primary-foreground'
-                                                    : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
-                                            )}
-                                        >
-                                            <LayoutGrid className="size-3.5" />
-                                            {t('popover.grid')}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setLayout(toolbarItem, 'list')}
-                                            className={cn(
-                                                'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
-                                                layout === 'list'
-                                                    ? 'border-primary/30 bg-primary text-primary-foreground'
-                                                    : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
-                                            )}
-                                        >
-                                            <List className="size-3.5" />
-                                            {t('popover.list')}
-                                        </button>
+                            {isLogPage ? (
+                                <>
+                                    <div className="grid gap-2">
+                                        <p className="text-xs font-medium text-muted-foreground">{t('popover.filter.log.timeRange')}</p>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <button
+                                                    type="button"
+                                                    className={cn(
+                                                        'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors flex items-center gap-1',
+                                                        (logFilters.startTime || logFilters.endTime)
+                                                            ? 'border-primary/30 bg-primary text-primary-foreground'
+                                                            : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                                                    )}
+                                                >
+                                                    <span className="truncate flex-1">
+                                                        {logFilters.startTime && logFilters.endTime
+                                                            ? `${formatDate(new Date(Number(logFilters.startTime) * 1000))} - ${formatDate(new Date(Number(logFilters.endTime) * 1000))}`
+                                                            : t('popover.filter.log.timeRangePlaceholder')}
+                                                    </span>
+                                                    <CalendarIcon className="size-3 shrink-0" />
+                                                </button>
+                                            </PopoverTrigger>
+                                            <PopoverContent align="start" className="w-auto p-0">
+                                                <Calendar
+                                                    mode="range"
+                                                    selected={{
+                                                        from: logFilters.startTime ? new Date(Number(logFilters.startTime) * 1000) : undefined,
+                                                        to: logFilters.endTime ? new Date(Number(logFilters.endTime) * 1000) : undefined,
+                                                    }}
+                                                    onSelect={(range) => {
+                                                        setLogFilter('startTime', range?.from ? String(Math.floor(range.from.getTime() / 1000)) : '');
+                                                        setLogFilter('endTime', range?.to ? String(Math.floor(range.to.getTime() / 1000) + 86399) : '');
+                                                    }}
+                                                    numberOfMonths={1}
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
-                                </div>
+                                    <div className="grid gap-2">
+                                        <p className="text-xs font-medium text-muted-foreground">{t('popover.filter.log.group')}</p>
+                                        <SearchableFilterSelect
+                                            value={logFilters.group}
+                                            onValueChange={(v) => setLogFilter('group', v)}
+                                            options={logFilterOptions.groups}
+                                            allLabel={t('popover.filter.log.allGroups')}
+                                            placeholder={t('popover.filter.log.group')}
+                                            searchPlaceholder={t('popover.filter.log.searchPlaceholder')}
+                                            emptyText={t('popover.filter.log.noResult')}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <p className="text-xs font-medium text-muted-foreground">{t('popover.filter.log.channel')}</p>
+                                        <SearchableFilterSelect
+                                            value={logFilters.channel}
+                                            onValueChange={(v) => setLogFilter('channel', v)}
+                                            options={logFilterOptions.channels}
+                                            allLabel={t('popover.filter.log.allChannels')}
+                                            placeholder={t('popover.filter.log.channel')}
+                                            searchPlaceholder={t('popover.filter.log.searchPlaceholder')}
+                                            emptyText={t('popover.filter.log.noResult')}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <p className="text-xs font-medium text-muted-foreground">{t('popover.filter.log.apikey')}</p>
+                                        <SearchableFilterSelect
+                                            value={logFilters.apikey}
+                                            onValueChange={(v) => setLogFilter('apikey', v)}
+                                            options={logFilterOptions.apikeys}
+                                            allLabel={t('popover.filter.log.allApikeys')}
+                                            placeholder={t('popover.filter.log.apikey')}
+                                            searchPlaceholder={t('popover.filter.log.searchPlaceholder')}
+                                            emptyText={t('popover.filter.log.noResult')}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {showLayoutOptions && (
+                                        <div className="grid gap-2">
+                                            <p className="text-xs font-medium text-muted-foreground">{t('popover.layout')}</p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLayout(toolbarItem, 'grid')}
+                                                    className={cn(
+                                                        'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                                        layout === 'grid'
+                                                            ? 'border-primary/30 bg-primary text-primary-foreground'
+                                                            : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                                                    )}
+                                                >
+                                                    <LayoutGrid className="size-3.5" />
+                                                    {t('popover.grid')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLayout(toolbarItem, 'list')}
+                                                    className={cn(
+                                                        'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                                        layout === 'list'
+                                                            ? 'border-primary/30 bg-primary text-primary-foreground'
+                                                            : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                                                    )}
+                                                >
+                                                    <List className="size-3.5" />
+                                                    {t('popover.list')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="grid gap-2">
+                                        <p className="text-xs font-medium text-muted-foreground">{t('popover.sort')}</p>
+                                        {showCombinedSortOptions ? (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {COMBINED_SORT_OPTIONS.map((option) => (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (toolbarItem === 'channel' || toolbarItem === 'group') {
+                                                                setSortConfig(toolbarItem, option.field, option.order);
+                                                            }
+                                                        }}
+                                                        className={cn(
+                                                            'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                                            sortField === option.field && sortOrder === option.order
+                                                                ? 'border-primary/30 bg-primary text-primary-foreground'
+                                                                : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                                                        )}
+                                                    >
+                                                        {option.field === 'name' ? <ArrowUpAZ className="size-3.5" /> : <Clock3 className="size-3.5" />}
+                                                        {t(option.labelKey)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSortOrder(toolbarItem, 'asc')}
+                                                    className={cn(
+                                                        'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                                        sortOrder === 'asc'
+                                                            ? 'border-primary/30 bg-primary text-primary-foreground'
+                                                            : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                                                    )}
+                                                >
+                                                    <ArrowUpAZ className="size-3.5" />
+                                                    {t('popover.nameAsc')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSortOrder(toolbarItem, 'desc')}
+                                                    className={cn(
+                                                        'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
+                                                        sortOrder === 'desc'
+                                                            ? 'border-primary/30 bg-primary text-primary-foreground'
+                                                            : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                                                    )}
+                                                >
+                                                    <ArrowUpAZ className="size-3.5" />
+                                                    {t('popover.nameDesc')}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <p className="text-xs font-medium text-muted-foreground">{t('popover.filter.title')}</p>
+                                        <div className="grid gap-2">
+                                            {filterOptions.map((option) => (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    onClick={() => handleFilterChange(option.value)}
+                                                    className={cn(
+                                                        'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors',
+                                                        activeFilter === option.value
+                                                            ? 'border-primary/30 bg-primary text-primary-foreground'
+                                                            : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                                                    )}
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
                             )}
-
-                            <div className="grid gap-2">
-                                <p className="text-xs font-medium text-muted-foreground">{t('popover.sort')}</p>
-                                {showCombinedSortOptions ? (
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {COMBINED_SORT_OPTIONS.map((option) => (
-                                            <button
-                                                key={option.value}
-                                                type="button"
-                                                onClick={() => {
-                                                    if (toolbarItem === 'channel' || toolbarItem === 'group') {
-                                                        setSortConfig(toolbarItem, option.field, option.order);
-                                                    }
-                                                }}
-                                                className={cn(
-                                                    'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
-                                                    sortField === option.field && sortOrder === option.order
-                                                        ? 'border-primary/30 bg-primary text-primary-foreground'
-                                                        : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
-                                                )}
-                                            >
-                                                {option.field === 'name' ? <ArrowUpAZ className="size-3.5" /> : <Clock3 className="size-3.5" />}
-                                                {t(option.labelKey)}
-                                            </button>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setSortOrder(toolbarItem, 'asc')}
-                                            className={cn(
-                                                'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
-                                                sortOrder === 'asc'
-                                                    ? 'border-primary/30 bg-primary text-primary-foreground'
-                                                    : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
-                                            )}
-                                        >
-                                            <ArrowUpAZ className="size-3.5" />
-                                            {t('popover.nameAsc')}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSortOrder(toolbarItem, 'desc')}
-                                            className={cn(
-                                                'h-8 rounded-lg border text-xs font-medium inline-flex items-center justify-center gap-1.5 transition-colors',
-                                                sortOrder === 'desc'
-                                                    ? 'border-primary/30 bg-primary text-primary-foreground'
-                                                    : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
-                                            )}
-                                        >
-                                            <ArrowUpAZ className="size-3.5" />
-                                            {t('popover.nameDesc')}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="grid gap-2">
-                                <p className="text-xs font-medium text-muted-foreground">{t('popover.filter.title')}</p>
-                                <div className="grid gap-2">
-                                    {filterOptions.map((option) => (
-                                        <button
-                                            key={option.value}
-                                            type="button"
-                                            onClick={() => handleFilterChange(option.value)}
-                                            className={cn(
-                                                'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors',
-                                                activeFilter === option.value
-                                                    ? 'border-primary/30 bg-primary text-primary-foreground'
-                                                    : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
-                                            )}
-                                        >
-                                            {option.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
                         </div>
                     </PopoverContent>
                 </Popover>
 
                 {/* 创建按钮 */}
-                <MorphingDialog>
-                    <MorphingDialogTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}>
-                        <Plus className="size-4 transition-colors duration-300" />
-                    </MorphingDialogTrigger>
+                {toolbarItem !== 'log' && (
+                    <MorphingDialog>
+                        <MorphingDialogTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}>
+                            <Plus className="size-4 transition-colors duration-300" />
+                        </MorphingDialogTrigger>
 
-                    <MorphingDialogContainer>
-                        <MorphingDialogContent className="w-fit max-w-full bg-card text-card-foreground px-6 py-4 rounded-3xl custom-shadow max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
-                            <CreateDialogContent activeItem={toolbarItem} />
-                        </MorphingDialogContent>
-                    </MorphingDialogContainer>
-                </MorphingDialog>
+                        <MorphingDialogContainer>
+                            <MorphingDialogContent className="w-fit max-w-full bg-card text-card-foreground px-6 py-4 rounded-3xl custom-shadow max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+                                <CreateDialogContent activeItem={toolbarItem} />
+                            </MorphingDialogContent>
+                        </MorphingDialogContainer>
+                    </MorphingDialog>
+                )}
             </motion.div>
         </AnimatePresence>
     );
