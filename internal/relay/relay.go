@@ -209,8 +209,10 @@ func (ra *relayAttempt) attempt() attemptResult {
 	op.ChannelKeyUpdate(ra.usedKey)
 	span.End(dbmodel.AttemptFailed, statusCode, fwdErr.Error())
 
-	// 熔断器：记录失败
-	balancer.RecordFailure(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
+	// 熔断器：记录失败（429不计入熔断，只触发key级冷却）
+	if statusCode != 429 {
+		balancer.RecordFailure(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
+	}
 
 	written := ra.c.Writer.Written()
 	if written {

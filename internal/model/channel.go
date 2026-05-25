@@ -169,7 +169,7 @@ func (c *Channel) GetChannelKey() ChannelKey {
 	return keys[0]
 }
 
-const key429CooldownSeconds int64 = 60
+const key429CooldownSeconds int64 = 5
 
 // availableKeys 过滤出可用的 key（enabled + 非空 + 非 429 冷却）
 func (c *Channel) availableKeys() []ChannelKey {
