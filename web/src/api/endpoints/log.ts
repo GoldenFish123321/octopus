@@ -120,7 +120,8 @@ export function useLogDetail(logId: number | null) {
             return result;
         },
         enabled: logId !== null,
-        staleTime: Infinity,
+        staleTime: 2 * 60 * 1000, // 2分钟内不重新请求
+        gcTime: 5 * 60 * 1000,    // 5分钟后清理缓存，避免无限累积
     });
 }
 
@@ -198,7 +199,9 @@ export function useLogs(options: { pageSize?: number; filters?: Partial<LogFilte
             if (!lastPage || lastPage.length < pageSize) return undefined;
             return allPages.length + 1;
         },
-        staleTime: Infinity,
+        staleTime: 2 * 60 * 1000,  // 2分钟内不重新请求
+        gcTime: 10 * 60 * 1000,     // 10分钟后清理缓存，避免无限累积
+        // 注意：不设maxPages，历史分页数据需要保留
         refetchOnMount: 'always',
     });
 
@@ -262,8 +265,15 @@ export function useLogs(options: { pageSize?: number; filters?: Partial<LogFilte
                                 const exists = old.pages.some((p) => p?.some((x) => x.id === log.id));
                                 if (exists) return old;
 
+                                // pages[0]是SSE实时数据页，pages[1..N]是历史分页数据
+                                // 只限制第一页大小，不动历史分页数据
+                                const maxSSEPageSize = pageSize * 3; // SSE实时数据最多保留30条（pageSize=10时）
                                 const firstPage = old.pages[0] ?? [];
-                                return { ...old, pages: [[log, ...firstPage], ...old.pages.slice(1)] };
+                                const newFirstPage = [log, ...firstPage];
+                                const clampedFirstPage = newFirstPage.length > maxSSEPageSize
+                                    ? newFirstPage.slice(0, maxSSEPageSize)
+                                    : newFirstPage;
+                                return { ...old, pages: [clampedFirstPage, ...old.pages.slice(1)] };
                             }
                         );
                     } catch (e) {
@@ -296,6 +306,11 @@ export function useLogs(options: { pageSize?: number; filters?: Partial<LogFilte
 
     const clear = useCallback(() => {
         queryClient.removeQueries({ queryKey });
+        // 同时清理相关联的详情缓存
+        const detailCacheKeys = queryClient.getQueryCache().findAll({ queryKey: ['logs', 'detail'] });
+        for (const cache of detailCacheKeys) {
+            queryClient.removeQueries({ queryKey: cache.queryKey });
+        }
     }, [queryClient, queryKey]);
 
     return {
