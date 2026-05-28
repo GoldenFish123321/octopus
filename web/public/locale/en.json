@@ -571,6 +571,7 @@
             "keyModeCost": "Cost",
             "keyModeRoundRobin": "Round Robin",
             "keyModeWeightedRandom": "Weighted Random",
+            "keyModeSticky": "Sticky (Cache)",
             "keyWeight": "Weight"
         }
     }

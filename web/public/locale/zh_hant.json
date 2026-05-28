@@ -571,6 +571,7 @@
             "keyModeCost": "成本最低",
             "keyModeRoundRobin": "輪詢",
             "keyModeWeightedRandom": "加權隨機",
+            "keyModeSticky": "粘性（快取優先）",
             "keyWeight": "權重"
         }
     }

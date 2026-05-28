@@ -324,6 +324,7 @@ export function ChannelForm({
                                 <SelectItem className='rounded-xl' value={String(ChannelKeyMode.Cost)}>{t('keyModeCost')}</SelectItem>
                                 <SelectItem className='rounded-xl' value={String(ChannelKeyMode.RoundRobin)}>{t('keyModeRoundRobin')}</SelectItem>
                                 <SelectItem className='rounded-xl' value={String(ChannelKeyMode.WeightedRandom)}>{t('keyModeWeightedRandom')}</SelectItem>
+                                <SelectItem className='rounded-xl' value={String(ChannelKeyMode.Sticky)}>{t('keyModeSticky')}</SelectItem>
                             </SelectContent>
                         </Select>
                         <Button

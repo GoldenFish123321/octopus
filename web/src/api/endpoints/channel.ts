@@ -32,6 +32,7 @@ export enum ChannelKeyMode {
     Cost = 0,            // 按总成本最低
     RoundRobin = 1,      // 轮询
     WeightedRandom = 2,  // 加权随机
+    Sticky = 3,          // 粘性：优先使用最近使用的 key
 }
 
 export type BaseUrl = {
