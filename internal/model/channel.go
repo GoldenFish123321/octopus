@@ -23,6 +23,7 @@ const (
 	ChannelKeyModeCost           ChannelKeyMode = 0 // 按总成本最低
 	ChannelKeyModeRoundRobin     ChannelKeyMode = 1 // 轮询
 	ChannelKeyModeWeightedRandom ChannelKeyMode = 2 // 加权随机
+	ChannelKeyModeSticky         ChannelKeyMode = 3 // 粘性：优先使用最近使用的 key，最大化缓存利用
 )
 
 type Channel struct {
@@ -149,6 +150,10 @@ func (c *Channel) GetChannelKeys() []ChannelKey {
 	case ChannelKeyModeRoundRobin:
 		sort.Slice(candidates, func(i, j int) bool {
 			return candidates[i].LastUseTimeStamp < candidates[j].LastUseTimeStamp
+		})
+	case ChannelKeyModeSticky:
+		sort.Slice(candidates, func(i, j int) bool {
+			return candidates[i].LastUseTimeStamp > candidates[j].LastUseTimeStamp
 		})
 	case ChannelKeyModeWeightedRandom:
 		c.weightedRandomSort(candidates)
